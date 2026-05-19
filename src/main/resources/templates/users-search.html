@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>a fetch — Find Users</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div th:replace="~{fragments/nav :: nav}"></div>
+<main class="page">
+    <h1>Find users</h1>
+    <form id="search-form" class="card">
+        <input id="search-q" placeholder="Search username..." required>
+        <button type="submit">Search</button>
+    </form>
+    <ul id="search-results"></ul>
+</main>
+<script src="/js/auth.js"></script>
+<script src="/js/users-search.js"></script>
+<script>document.getElementById('logout-btn')?.addEventListener('click', logoutUser);</script>
+</body>
+</html>

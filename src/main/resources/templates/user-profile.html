@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>a fetch — User Profile</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div th:replace="~{fragments/nav :: nav}"></div>
+<main class="page">
+    <div id="user-profile"></div>
+</main>
+<script th:inline="javascript">
+    const profileUsername = /*[[${username}]]*/ '';
+</script>
+<script src="/js/auth.js"></script>
+<script>
+    async function load() {
+        const res = await apiFetch('/api/users/' + profileUsername);
+        const p = await res.json();
+        let html = `<h1>${p.displayName || p.username}</h1><p>@${p.username}</p><p>${p.bio || ''}</p>`;
+        if (!p.isSelf && !p.isFriend) {
+            html += `<button type="button" id="add-friend">Add friend</button>`;
+        }
+        document.getElementById('user-profile').innerHTML = html;
+        document.getElementById('add-friend')?.addEventListener('click', async () => {
+            await apiFetch('/api/friends/request', { method: 'POST', body: JSON.stringify({ userId: p.id }) });
+            alert('Request sent');
+        });
+        if (p.isFriend) {
+            const posts = await apiFetch('/api/posts/profile/' + p.id);
+            const list = await posts.json();
+            document.getElementById('user-profile').innerHTML += '<h2>Friends-only posts</h2>' +
+                list.map(post => `<article class="post-card"><p>${post.body}</p></article>`).join('');
+        }
+    }
+    if (!getToken()) window.location.href = '/login';
+    else load();
+    document.getElementById('logout-btn')?.addEventListener('click', logoutUser);
+</script>
+</body>
+</html>

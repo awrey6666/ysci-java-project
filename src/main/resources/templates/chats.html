@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>a fetch — Chats</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div th:replace="~{fragments/nav :: nav}"></div>
+<main class="page chats-layout">
+    <aside>
+        <h2>Rooms</h2>
+        <ul id="room-list"></ul>
+        <button id="create-group-btn" type="button">Create group (friends)</button>
+    </aside>
+    <section class="chat-panel">
+        <h2 id="chat-title">Select a room</h2>
+        <div id="chat-messages" class="chat-messages"></div>
+        <form id="chat-form">
+            <input type="hidden" id="chat-image-url">
+            <input type="file" accept="image/*" onchange="uploadChatImage(this)">
+            <input id="chat-input" placeholder="Message... @username to reply" required>
+            <button type="submit">Send</button>
+        </form>
+    </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/chats.js"></script>
+<script>document.getElementById('logout-btn')?.addEventListener('click', logoutUser);</script>
+</body>
+</html>

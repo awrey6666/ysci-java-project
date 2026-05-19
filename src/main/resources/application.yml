@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: a-fetch
+  datasource:
+    url: jdbc:mysql://localhost:3306/YSCI_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ""
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: 8080
+
+afetch:
+  jwt:
+    secret: ${JWT_SECRET:change-me-to-a-very-long-secret-key-at-least-256-bits-long-for-dev}
+    access-expiration-minutes: 15
+    refresh-expiration-days: 30
+  refresh-cookie-name: afetch_refresh
+  openrouter:
+    api-key: ${OPENROUTER_API_KEY:}
+    model: ${OPENROUTER_MODEL:google/gemma-2-9b-it:free}
+    base-url: https://openrouter.ai/api/v1
+  gcs:
+    bucket: ${GCS_BUCKET:}
+    enabled: ${GCS_ENABLED:false}
+  local-upload-dir: ${LOCAL_UPLOAD_DIR:uploads}

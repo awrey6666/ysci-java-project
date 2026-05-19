@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>a fetch — Profile</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div th:replace="~{fragments/nav :: nav}"></div>
+<main class="page">
+    <h1>Profile — <span id="profile-username"></span></h1>
+    <form id="profile-form" class="card">
+        <input id="display-name" placeholder="Display name">
+        <textarea id="bio" placeholder="Bio"></textarea>
+        <input id="avatar-url" placeholder="Avatar URL">
+        <button type="submit">Save</button>
+    </form>
+    <h2>Friends-only post</h2>
+    <form id="profile-post-form" class="card">
+        <textarea id="profile-post-body" placeholder="Share with friends only..." required></textarea>
+        <button type="submit">Publish to friends</button>
+    </form>
+</main>
+<script src="/js/auth.js"></script>
+<script src="/js/profile.js"></script>
+<script>document.getElementById('logout-btn')?.addEventListener('click', logoutUser);</script>
+</body>
+</html>

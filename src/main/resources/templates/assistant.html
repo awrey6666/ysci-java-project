@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>a fetch — AI Assistant</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div th:replace="~{fragments/nav :: nav}"></div>
+<main class="page">
+    <h1>AI Assistant</h1>
+    <p>Help with code and Yerevan State College of Informatics.</p>
+    <div id="ai-messages" class="ai-messages"></div>
+    <form id="ai-form" class="card">
+        <textarea id="ai-input" placeholder="Ask about Java, Spring, or YSCI..." required></textarea>
+        <button type="submit">Send</button>
+    </form>
+</main>
+<script src="/js/auth.js"></script>
+<script src="/js/assistant.js"></script>
+<script>document.getElementById('logout-btn')?.addEventListener('click', logoutUser);</script>
+</body>
+</html>

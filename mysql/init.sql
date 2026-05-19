@@ -1,0 +1,1 @@
+-- Schema is managed by Flyway migrations in the Spring Boot application.

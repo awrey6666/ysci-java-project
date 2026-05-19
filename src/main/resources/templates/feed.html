@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>a fetch — Feed</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div th:replace="~{fragments/nav :: nav}"></div>
+<main class="page">
+    <h1>Feed</h1>
+    <form id="create-post-form" class="card">
+        <textarea id="post-body" placeholder="Share anonymously..." required></textarea>
+        <label><input type="checkbox" id="post-anonymous" checked> Post anonymously</label>
+        <input type="hidden" id="post-image-url">
+        <input type="file" accept="image/*" onchange="uploadPostImage(this)">
+        <button type="submit">Post</button>
+    </form>
+    <section id="feed-list"></section>
+</main>
+<script src="/js/auth.js"></script>
+<script src="/js/feed.js"></script>
+<script>document.getElementById('logout-btn')?.addEventListener('click', logoutUser);</script>
+</body>
+</html>
