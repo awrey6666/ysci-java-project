@@ -12,6 +12,18 @@ function clearToken() {
     sessionStorage.removeItem(TOKEN_KEY);
 }
 
+async function ensureToken() {
+    if (getToken()) {
+        return true;
+    }
+    const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+    if (!res.ok) {
+        return false;
+    }
+    saveToken(await res.json());
+    return true;
+}
+
 async function apiFetch(url, options = {}) {
     const headers = options.headers || {};
     const token = getToken();

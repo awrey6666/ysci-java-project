@@ -26,8 +26,8 @@ function appendBubble(role, text) {
     box.scrollTop = box.scrollHeight;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    if (!getToken()) {
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!(await ensureToken())) {
         window.location.href = '/login';
         return;
     }

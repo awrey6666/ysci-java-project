@@ -1,6 +1,7 @@
 package com.afetch.config;
 
 import com.afetch.security.JwtAuthFilter;
+import com.afetch.security.RefreshCookieAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,10 +22,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RefreshCookieAuthFilter refreshCookieAuthFilter;
     private final UserDetailsService userDetailsService;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, UserDetailsService userDetailsService) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          RefreshCookieAuthFilter refreshCookieAuthFilter,
+                          UserDetailsService userDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.refreshCookieAuthFilter = refreshCookieAuthFilter;
         this.userDetailsService = userDetailsService;
     }
 
@@ -35,13 +40,14 @@ public class SecurityConfig {
                         .ignoringRequestMatchers("/api/**", "/ws/**"))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/login", "/register", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
+                        .requestMatchers("/", "/login", "/register", "/favicon.ico", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(refreshCookieAuthFilter, JwtAuthFilter.class);
 
         return http.build();
     }

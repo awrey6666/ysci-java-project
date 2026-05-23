@@ -78,8 +78,8 @@ async function uploadChatImage(input) {
     document.getElementById('chat-image-url').value = data.url;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    if (!getToken()) {
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!(await ensureToken())) {
         window.location.href = '/login';
         return;
     }

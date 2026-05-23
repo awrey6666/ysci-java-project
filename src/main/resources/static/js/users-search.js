@@ -33,8 +33,8 @@ async function openDm(userId) {
     window.location.href = '/chats?room=' + room.id;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    if (!getToken()) {
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!(await ensureToken())) {
         window.location.href = '/login';
         return;
     }

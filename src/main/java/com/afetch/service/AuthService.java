@@ -7,6 +7,7 @@ import com.afetch.domain.enums.UserRole;
 import com.afetch.repository.RefreshTokenRepository;
 import com.afetch.repository.UserRepository;
 import com.afetch.security.JwtTokenProvider;
+import com.afetch.security.RefreshTokenValidator;
 import com.afetch.security.UserPrincipal;
 import com.afetch.web.dto.auth.AuthResponse;
 import com.afetch.web.dto.auth.LoginRequest;
@@ -19,11 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.UUID;
 
 @Service
@@ -33,17 +30,20 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenValidator refreshTokenValidator;
     private final AfetchProperties properties;
 
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider jwtTokenProvider,
+                       RefreshTokenValidator refreshTokenValidator,
                        AfetchProperties properties) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.refreshTokenValidator = refreshTokenValidator;
         this.properties = properties;
     }
 
@@ -82,13 +82,8 @@ public class AuthService {
 
     @Transactional
     public AuthResponse refresh(String rawRefreshToken, HttpServletResponse response) {
-        String hash = hashToken(rawRefreshToken);
-        RefreshToken token = refreshTokenRepository.findByTokenHashAndRevokedFalse(hash)
+        RefreshToken token = refreshTokenValidator.findValid(rawRefreshToken)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
-
-        if (token.getExpiresAt().isBefore(Instant.now())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
-        }
 
         token.setRevoked(true);
         refreshTokenRepository.save(token);
@@ -108,7 +103,7 @@ public class AuthService {
 
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(userRepository.getReferenceById(principal.getId()));
-        refreshToken.setTokenHash(hashToken(rawRefresh));
+        refreshToken.setTokenHash(refreshTokenValidator.hashToken(rawRefresh));
         refreshToken.setExpiresAt(Instant.now().plusSeconds(properties.getJwt().getRefreshExpirationDays() * 86400L));
         refreshTokenRepository.save(refreshToken);
 
@@ -138,13 +133,4 @@ public class AuthService {
         response.addCookie(cookie);
     }
 
-    private String hashToken(String raw) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
-    }
 }

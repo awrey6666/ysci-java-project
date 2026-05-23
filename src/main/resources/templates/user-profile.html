@@ -34,8 +34,13 @@
                 list.map(post => `<article class="post-card"><p>${post.body}</p></article>`).join('');
         }
     }
-    if (!getToken()) window.location.href = '/login';
-    else load();
+    (async () => {
+        if (!(await ensureToken())) {
+            window.location.href = '/login';
+            return;
+        }
+        load();
+    })();
     document.getElementById('logout-btn')?.addEventListener('click', logoutUser);
 </script>
 </body>
