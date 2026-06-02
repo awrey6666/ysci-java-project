@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title th:text="'@' + ${username} + ' — FETCH'">Profile — FETCH</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/index.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-sys-bg-primary text-sys-text-primary font-sans antialiased min-h-screen p-4 md:p-8">
+    <div class="max-w-2xl mx-auto">
+      <a href="/home" class="logo-mark mb-6 inline-flex" aria-label="FETCH">F</a>
+      <a href="/home" class="block text-[10px] font-mono uppercase tracking-wider text-sys-accent hover:underline mb-6">← Back to Community</a>
+
+      <div id="profile-loading" class="text-[11px] text-sys-text-secondary font-mono uppercase tracking-wider">Loading profile…</div>
+      <div id="profile-error" class="mt-4 text-[11px] text-red-400 hidden"></div>
+
+      <div id="profile-content" class="hidden flex flex-col gap-6">
+        <div class="border border-sys-border bg-sys-secondary rounded-xl p-6 flex flex-col sm:flex-row items-center gap-6">
+          <div class="w-28 h-28 rounded-full overflow-hidden border-2 border-sys-accent shrink-0 bg-sys-bg-primary shadow-md">
+            <img id="profile-avatar" src="" alt="" class="w-full h-full object-cover" />
+          </div>
+          <div class="flex-1 text-center sm:text-left space-y-2">
+            <h1 id="profile-display-name" class="heading-display text-2xl"></h1>
+            <p id="profile-username" class="text-sm font-mono text-sys-accent"></p>
+            <p id="profile-bio" class="text-[11px] text-sys-text-secondary leading-relaxed"></p>
+            <p id="profile-meta" class="text-[10px] font-mono uppercase tracking-wider text-sys-text-muted"></p>
+            <div id="profile-actions" class="flex flex-wrap gap-2 pt-2 justify-center sm:justify-start"></div>
+          </div>
+        </div>
+
+        <div class="border border-sys-border bg-sys-secondary p-5 rounded-xl">
+          <h2 class="heading-section text-sys-text-primary mb-3">Friends</h2>
+          <div id="profile-friends-list" class="space-y-2"></div>
+        </div>
+
+        <div class="border border-sys-border bg-sys-secondary p-5 rounded-xl">
+          <h2 class="heading-section text-sys-text-primary mb-3">Posts</h2>
+          <div id="profile-posts-list" class="space-y-4"></div>
+        </div>
+      </div>
+    </div>
+
+    <script th:inline="javascript">
+      const username = /*[[${username}]]*/ '';
+      const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200';
+
+      const refreshAccessToken = async () => {
+        const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+        if (!res.ok) throw new Error('refresh failed');
+        return (await res.json()).accessToken;
+      };
+
+      const api = async (path, options = {}) => {
+        const token = await refreshAccessToken();
+        const res = await fetch(path, {
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+            Authorization: 'Bearer ' + token,
+            ...(options.body ? { 'Content-Type': 'application/json' } : {})
+          },
+          ...options
+        });
+        if (!res.ok) throw new Error('request failed');
+        if (res.status === 204) return null;
+        return res.json();
+      };
+
+      const formatDateTime = (value) => {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      };
+
+      const renderPost = (post) => {
+        const vis = (post.visibility || '').toLowerCase().includes('friend') ? '🔐 Friends only' : '🌐 Public';
+        return `
+          <article class="border border-sys-border bg-sys-bg-primary p-4 rounded-xl">
+            <p class="text-[11px] text-sys-text-secondary leading-relaxed">${post.body || ''}</p>
+            <p class="mt-2 text-[9px] font-mono text-sys-text-muted uppercase">${formatDateTime(post.createdAt)} · ${vis} · ${post.likeCount || 0} likes</p>
+          </article>
+        `;
+      };
+
+      const renderActions = (profile) => {
+        const el = document.getElementById('profile-actions');
+        if (profile.isSelf) {
+          el.innerHTML = '<a href="/home" class="btn-accent text-[10px] font-mono font-bold uppercase tracking-widest px-4 py-2 rounded-lg inline-block">Open your dashboard</a>';
+          return;
+        }
+        if (profile.isFriend) {
+          el.innerHTML = '<span class="text-[10px] font-mono text-emerald-400 uppercase px-3 py-2 border border-emerald-500/30 rounded-lg">Friends</span>';
+          return;
+        }
+        if (profile.hasPendingRequest) {
+          el.innerHTML = '<a href="/home" class="composer-action-btn">View request in Discover</a>';
+          return;
+        }
+        if (profile.requestSent) {
+          el.innerHTML = '<span class="text-[10px] font-mono text-sys-text-muted uppercase">Request pending</span>';
+          return;
+        }
+        el.innerHTML = '<button type="button" id="add-friend-btn" class="btn-accent text-[10px] font-mono font-bold uppercase tracking-widest px-4 py-2 rounded-lg">Add friend</button>';
+        document.getElementById('add-friend-btn').addEventListener('click', async () => {
+          try {
+            await api('/api/friends/request', { method: 'POST', body: JSON.stringify({ userId: profile.id }) });
+            el.innerHTML = '<span class="text-[10px] font-mono text-sys-text-muted uppercase">Request sent</span>';
+          } catch {
+            alert('Could not send request');
+          }
+        });
+      };
+
+      const loadProfile = async () => {
+        try {
+          const profile = await api('/api/users/' + encodeURIComponent(username));
+          document.getElementById('profile-avatar').src = profile.avatarUrl || DEFAULT_AVATAR;
+          document.getElementById('profile-display-name').textContent = profile.displayName || profile.username;
+          document.getElementById('profile-username').textContent = '@' + profile.username;
+          document.getElementById('profile-bio').textContent = profile.bio || 'No bio yet.';
+          const meta = [(profile.friendsCount || 0) + ' friends'];
+          if (profile.isFriend) meta.push('You are friends');
+          document.getElementById('profile-meta').textContent = meta.join(' · ');
+          renderActions(profile);
+
+          const friendsEl = document.getElementById('profile-friends-list');
+          if (profile.isSelf || profile.isFriend) {
+            try {
+              const friends = await api('/api/friends/user/' + profile.id);
+              friendsEl.innerHTML = friends.length
+                ? friends.map((f) => `<div class="p-2 border border-sys-border rounded-lg text-[11px]"><strong>${f.displayName || f.username}</strong> <span class="text-sys-text-muted font-mono">@${f.username}</span></div>`).join('')
+                : '<p class="text-[10px] text-sys-text-muted">No friends yet.</p>';
+            } catch {
+              friendsEl.innerHTML = '<p class="text-[10px] text-sys-text-muted">Could not load friends.</p>';
+            }
+          } else {
+            friendsEl.innerHTML = '<p class="text-[10px] text-sys-text-muted">Friends list is visible to friends only.</p>';
+          }
+
+          const posts = await api('/api/posts/profile/' + profile.id);
+          const postsEl = document.getElementById('profile-posts-list');
+          postsEl.innerHTML = posts.length ? posts.map(renderPost).join('') : '<p class="text-[10px] text-sys-text-muted">No posts yet.</p>';
+
+          document.getElementById('profile-loading').classList.add('hidden');
+          document.getElementById('profile-content').classList.remove('hidden');
+        } catch (err) {
+          document.getElementById('profile-loading').classList.add('hidden');
+          const errorEl = document.getElementById('profile-error');
+          errorEl.textContent = 'Could not load this profile. ';
+          errorEl.innerHTML += '<a href="/login" class="text-sys-accent font-bold hover:underline">Sign in</a> to view profiles.';
+          errorEl.classList.remove('hidden');
+        }
+      };
+
+      if (localStorage.getItem('fetch.theme') === 'light') {
+        document.body.classList.add('light-theme');
+      }
+      loadProfile();
+    </script>
+    <script type="module">
+      import { setDocumentBranding } from '/js/auth-session.js';
+      setDocumentBranding();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register — FETCH</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/index.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-sys-bg-primary text-sys-text-primary font-sans antialiased min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md border border-sys-border bg-sys-bg-primary p-8 rounded-3xl shadow-sm">
+      <a href="/" class="logo-mark mb-4" aria-label="FETCH">F</a>
+      <h1 class="heading-display text-xl mb-1">Register</h1>
+      <p class="text-[10px] font-mono uppercase tracking-wider text-sys-text-secondary mb-6">Student social network</p>
+
+      <form id="register-form" class="space-y-4">
+        <div>
+          <label for="username" class="block text-[10px] font-mono uppercase tracking-wider text-sys-text-secondary mb-1">Username</label>
+          <input id="username" name="username" type="text" required minlength="3" maxlength="50" autocomplete="username"
+            class="w-full px-3 py-2 rounded-lg border border-sys-border bg-sys-input text-sys-text-primary text-sm" />
+        </div>
+        <div>
+          <label for="email" class="block text-[10px] font-mono uppercase tracking-wider text-sys-text-secondary mb-1">Email</label>
+          <input id="email" name="email" type="email" required autocomplete="email"
+            class="w-full px-3 py-2 rounded-lg border border-sys-border bg-sys-input text-sys-text-primary text-sm" />
+        </div>
+        <div>
+          <label for="password" class="block text-[10px] font-mono uppercase tracking-wider text-sys-text-secondary mb-1">Password (min 8 characters)</label>
+          <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password"
+            class="w-full px-3 py-2 rounded-lg border border-sys-border bg-sys-input text-sys-text-primary text-sm" />
+        </div>
+        <p id="register-error" class="text-[11px] text-red-400 hidden"></p>
+        <button type="submit" id="register-submit"
+          class="btn-accent w-full py-2.5 rounded-lg text-[11px] font-bold uppercase tracking-widest">
+          Create account
+        </button>
+      </form>
+
+      <p class="mt-6 text-[10px] text-sys-text-secondary text-center">
+        Already have an account?
+        <a href="/login" class="text-sys-accent font-bold hover:underline">Log in</a>
+        ·
+        <a href="/home" class="text-sys-accent font-bold hover:underline">Home</a>
+      </p>
+    </div>
+
+    <script>
+      document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById('register-error');
+        const btn = document.getElementById('register-submit');
+        errEl.classList.add('hidden');
+        btn.disabled = true;
+        try {
+          const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              username: document.getElementById('username').value.trim(),
+              email: document.getElementById('email').value.trim(),
+              password: document.getElementById('password').value
+            })
+          });
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || 'Registration failed');
+          }
+          const data = await res.json();
+          if (data?.accessToken) {
+            localStorage.setItem('fetch.access-token', data.accessToken);
+          }
+          window.location.href = '/home';
+        } catch (err) {
+          errEl.textContent = 'Registration failed. Username may be taken or password too short.';
+          errEl.classList.remove('hidden');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+      if (localStorage.getItem('fetch.theme') === 'light') {
+        document.body.classList.add('light-theme');
+      }
+    </script>
+    <script type="module">
+      import { setDocumentBranding } from '/js/auth-session.js';
+      setDocumentBranding();
+    </script>
+  </body>
+</html>
