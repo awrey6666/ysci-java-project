@@ -86,8 +86,12 @@ public class AiService {
             log.warn("OpenRouter request failed, returning fallback assistant response: {}", e.getMessage());
             reply = "The AI provider is currently unavailable. I can still help with basic app guidance, but full model responses are temporarily offline.";
         } catch (IllegalStateException e) {
-            log.warn("OpenRouter is not configured, returning fallback assistant response: {}", e.getMessage());
-            reply = "AI is in local fallback mode because the OpenRouter API key is not configured. Add OPENROUTER_API_KEY to enable full assistant answers.";
+            log.warn("OpenRouter is not configured or available, returning fallback assistant response: {}", e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("OpenRouter API key is not configured")) {
+                reply = "AI is in local fallback mode because the OpenRouter API key is not configured. Add OPENROUTER_API_KEY to enable full assistant answers.";
+            } else {
+                reply = "AI is in local fallback mode because the OpenRouter provider is unavailable. Add OPENROUTER_API_KEY and ensure the OpenRouter service is reachable.";
+            }
         } catch (Exception e) {
             log.warn("Unexpected AI provider failure, returning fallback assistant response", e);
             reply = "The AI service hit a temporary error. Please try again in a moment.";
@@ -98,8 +102,16 @@ public class AiService {
         assistantMsg.setRole(AiMessageRole.ASSISTANT);
         assistantMsg.setContent(reply);
         conversation.getMessages().add(assistantMsg);
-
         conversation.setLastActivity(java.time.Instant.now());
+
+        // If conversation has no title yet and there is user content, generate a concise title
+        if ((conversation.getTitle() == null || conversation.getTitle().isBlank()) && conversation.getMessages().stream().anyMatch(m -> m.getRole() == AiMessageRole.USER)) {
+            String generated = generateTitleFromConversation(conversation);
+            if (generated != null && !generated.isBlank()) {
+                conversation.setTitle(generated);
+            }
+        }
+
         conversationRepository.save(conversation);
         return new AiChatResponse(reply, conversation.getId());
     }
@@ -107,7 +119,7 @@ public class AiService {
     @Transactional(readOnly = true)
     public List<AiConversationSummary> listConversations(Long userId) {
         return conversationRepository.findByUserIdOrderByLastActivityDesc(userId).stream()
-                .map(c -> new AiConversationSummary(c.getId(), c.getCreatedAt(), c.getMessages().size()))
+                .map(c -> new AiConversationSummary(c.getId(), c.getCreatedAt(), c.getMessages().size(), c.getTitle()))
                 .toList();
     }
 
@@ -120,7 +132,41 @@ public class AiService {
                 .map(m -> new AiMessageDto(m.getId(), m.getRole().name().toLowerCase(), m.getContent(), m.getCreatedAt()))
                 .toList();
 
-        return new AiConversationDetails(conversation.getId(), conversation.getCreatedAt(), messages);
+        return new AiConversationDetails(conversation.getId(), conversation.getCreatedAt(), messages, conversation.getTitle());
+    }
+
+    @Transactional
+    public AiConversationSummary createConversation(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        AiConversation conv = createConversation(user);
+        return new AiConversationSummary(conv.getId(), conv.getCreatedAt(), conv.getMessages().size(), conv.getTitle());
+    }
+
+    private String generateTitleFromConversation(AiConversation conversation) {
+        // pick the first user message content and produce a short title
+        return conversation.getMessages().stream()
+                .filter(m -> m.getRole() == AiMessageRole.USER)
+                .findFirst()
+                .map(m -> {
+                    String text = m.getContent() == null ? "" : m.getContent().trim();
+                    if (text.isEmpty()) return null;
+                    // simple heuristic: take first 6 words, remove punctuation
+                    String cleaned = text.replaceAll("[\\p{Punct}&&[^'-]]+", " ").replaceAll("\\s+", " ").trim();
+                    String[] parts = cleaned.split(" ");
+                    int n = Math.min(6, parts.length);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < n; i++) {
+                        String w = parts[i];
+                        if (w.length() == 0) continue;
+                        sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1));
+                        if (i < n - 1) sb.append(' ');
+                    }
+                    String title = sb.toString();
+                    if (title.length() > 60) title = title.substring(0, 57) + "...";
+                    return title;
+                })
+                .orElse(null);
     }
 
     private AiConversation getOrCreateConversation(Long userId, Long conversationId, User user) {

@@ -33,6 +33,11 @@ public class AiApiController {
         return aiService.listConversations(SecurityUtils.currentUserId());
     }
 
+    @PostMapping("/conversations")
+    public AiConversationSummary createConversation() {
+        return aiService.createConversation(SecurityUtils.currentUserId());
+    }
+
     @GetMapping("/conversations/{id}")
     public AiConversationDetails getConversation(@PathVariable Long id) {
         return aiService.getConversation(SecurityUtils.currentUserId(), id);

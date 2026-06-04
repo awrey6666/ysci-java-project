@@ -1215,17 +1215,20 @@ const renderAiSessions = (sessions) => {
     return;
   }
 
-  container.innerHTML = sessions.map((session) => `
+  container.innerHTML = sessions.map((session) => {
+    const title = session.title || (session.createdAt ? new Date(session.createdAt).toLocaleString() : `Session ${session.id}`);
+    return `
     <div data-session-id="${session.id}" class="ai-session-selector p-3.5 block text-left cursor-pointer hover:bg-sys-secondary/60 rounded-lg transition-theme">
       <div class="flex items-start gap-2.5">
         <span class="font-mono text-xs text-sys-accent font-bold">[${session.id}]</span>
         <div class="min-w-0">
-          <h4 class="text-xs font-bold text-sys-text-primary uppercase tracking-wide truncate leading-none">Conversation ${session.id}</h4>
+          <h4 class="text-xs font-bold text-sys-text-primary truncate leading-none">${escapeHtml(title)}</h4>
           <span class="text-[8px] font-mono block mt-1.5 text-sys-text-secondary">${session.messagesCount || 0} messages</span>
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   container.querySelectorAll('[data-session-id]').forEach((item) => {
     item.addEventListener('click', async () => {
@@ -1313,6 +1316,18 @@ const sendAiMessage = async () => {
     }
     if (createdConversationId) {
       await selectAiSession(createdConversationId);
+      // refresh sessions list to pick up any generated titles
+      try {
+        const sessions = await apiGet('/api/ai/conversations');
+        state.aiConversations = sessions || [];
+        renderAiSessions(state.aiConversations);
+        // keep the created session selected
+        document.querySelectorAll('[data-session-id]').forEach((el) => {
+          el.classList.toggle('bg-sys-accent/10', Number(el.dataset.sessionId) === createdConversationId);
+        });
+      } catch (e) {
+        console.warn('could not refresh AI sessions', e);
+      }
     } else {
       renderAiMessages([
         { role: 'user', content: message, createdAt: new Date().toISOString() },
@@ -1447,6 +1462,27 @@ const initActions = () => {
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
         sendAiMessage();
+      }
+    });
+  }
+
+  const aiNewBtn = document.getElementById('ai-new-chat-btn');
+  if (aiNewBtn) {
+    aiNewBtn.addEventListener('click', async () => {
+      aiNewBtn.disabled = true;
+      try {
+        const created = await apiPost('/api/ai/conversations', {});
+        if (created) {
+          // add to local state and render
+          state.aiConversations = [created, ...(state.aiConversations || [])];
+          renderAiSessions(state.aiConversations);
+          if (created.id) await selectAiSession(created.id);
+        }
+      } catch (err) {
+        console.error('create ai conversation failed', err);
+        alert('Could not create a new chat');
+      } finally {
+        aiNewBtn.disabled = false;
       }
     });
   }
@@ -1676,9 +1712,18 @@ const enableAiComposer = () => {
 const loadAiSessions = async () => {
   try {
     const sessions = await apiGet('/api/ai/conversations');
-    renderAiSessions(sessions);
-    if (sessions.length) {
-      selectAiSession(sessions[0].id);
+    state.aiConversations = sessions || [];
+    renderAiSessions(sessions || []);
+    if (sessions && sessions.length) {
+      // preserve current selection if present, otherwise open newest
+      if (state.activeAiConversationId) {
+        // ensure selected session remains highlighted
+        document.querySelectorAll('[data-session-id]').forEach((el) => {
+          el.classList.toggle('bg-sys-accent/10', Number(el.dataset.sessionId) === state.activeAiConversationId);
+        });
+      } else {
+        await selectAiSession(sessions[0].id);
+      }
     } else {
       state.activeAiConversationId = null;
       enableAiComposer();

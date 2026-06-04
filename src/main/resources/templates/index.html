@@ -352,9 +352,14 @@
           
           <!-- Left side panel: AI History sessions list -->
           <aside class="split-chat-list w-64 sm:w-72 border-r border-sys-border flex flex-col bg-sys-bg-primary/40 shrink-0 transition-theme min-h-0">
-            <header class="p-4 border-b border-sys-border bg-sys-secondary/30 flex flex-col gap-2">
-              <span class="inline-block bg-sys-accent/20 text-sys-accent text-[8px] font-mono uppercase tracking-[0.2em] px-2 py-0.5 rounded self-start">INTELLIGENT AI CORE</span>
-              <h3 class="heading-section text-sys-text-primary">Diagnostic Logs</h3>
+            <header class="p-4 border-b border-sys-border bg-sys-secondary/30 flex items-center justify-between gap-2">
+              <div class="flex flex-col">
+                <span class="inline-block bg-sys-accent/20 text-sys-accent text-[8px] font-mono uppercase tracking-[0.2em] px-2 py-0.5 rounded self-start">INTELLIGENT AI CORE</span>
+                <h3 class="heading-section text-sys-text-primary">Diagnostic Logs</h3>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="ai-new-chat-btn" type="button" class="btn-accent text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-lg">+ New Chat</button>
+              </div>
             </header>
 
             <div id="ai-sessions-container" class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-1 p-2">
