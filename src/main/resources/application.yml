@@ -1,11 +1,13 @@
 spring:
   application:
     name: FETCH
+
   datasource:
-    url: jdbc:mysql://localhost:3306/YSCI_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: ""
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -13,32 +15,35 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
   flyway:
     enabled: true
     baseline-on-migrate: true
-  data:
-    redis:
-      host: localhost
-      port: 6379
+
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 afetch:
   jwt:
-    secret: ${JWT_SECRET:change-me-to-a-very-long-secret-key-at-least-256-bits-long-for-dev}
+    secret: ${JWT_SECRET}
+
     access-expiration-minutes: 15
     refresh-expiration-days: 30
+
   refresh-cookie-name: afetch_refresh
+
   openrouter:
-    api-key: ${OPENROUTER_API_KEY:}
-    model: ${OPENROUTER_MODEL:openai/gpt-4.1-mini}
+    api-key: ${OPENROUTER_API_KEY}
+    model: ${OPENROUTER_MODEL:openai/gpt-4o-mini}
     base-url: https://openrouter.ai/api/v1
+
   gcs:
-    bucket: ${GCS_BUCKET:}
+    bucket: ${GCS_BUCKET}
     enabled: ${GCS_ENABLED:false}
+
   local-upload-dir: ${LOCAL_UPLOAD_DIR:uploads}
