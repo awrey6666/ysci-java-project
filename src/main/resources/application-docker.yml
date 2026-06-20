@@ -15,5 +15,5 @@ afetch:
     api-key: ${OPENROUTER_API_KEY:}
     model: ${OPENROUTER_MODEL:openai/gpt-4.1-mini}
   gcs:
-    bucket: ${GCS_BUCKET:}
-    enabled: ${GCS_ENABLED:false}
+    project-id: ${GCS_PROJECT_ID:project-a4b9287b-070f-4f18-b48}
+    bucket: ${GCS_BUCKET:java_project_bucket}

@@ -40,7 +40,7 @@ public class SecurityConfig {
                         .ignoringRequestMatchers("/api/**", "/ws/**"))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/home", "/feed", "/chats", "/assistant", "/profile", "/users/search", "/users/*", "/login", "/register", "/favicon.ico", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
+                        .requestMatchers("/", "/home", "/feed", "/chats", "/assistant", "/profile", "/users/search", "/users/*", "/login", "/register", "/favicon.ico", "/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/**").authenticated()

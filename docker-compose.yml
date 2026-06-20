@@ -11,16 +11,16 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-docker-jwt-secret-change-in-production-min-256-bits!!}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-google/gemma-2-9b-it:free}
-      GCS_BUCKET: ${GCS_BUCKET:-}
-      GCS_ENABLED: ${GCS_ENABLED:-false}
-      GOOGLE_APPLICATION_CREDENTIALS: /secrets/gcs-credentials.json
+      GCS_BUCKET: ${GCS_BUCKET:-java_project_bucket}
+      GCS_PROJECT_ID: ${GCS_PROJECT_ID:-project-a4b9287b-070f-4f18-b48}
+      # CRITICAL: Mount GCS credentials for Application Default Credentials
+      GOOGLE_APPLICATION_CREDENTIALS: /app/gcs-credentials.json
     volumes:
-      - app_uploads:/app/uploads
+      # Mount GCS service account credentials from host
+      - ${GCS_CREDENTIALS_PATH:-~/.config/gcloud/application_default_credentials.json}:/app/gcs-credentials.json:ro
     depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_started
+      - mysql
+      - redis
     restart: unless-stopped
 
   nginx:
@@ -56,4 +56,3 @@ services:
 volumes:
   mysql_data:
   redis_data:
-  app_uploads:

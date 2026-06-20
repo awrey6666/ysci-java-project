@@ -11,7 +11,6 @@ public class AfetchProperties {
     private String refreshCookieName = "afetch_refresh";
     private OpenRouter openrouter = new OpenRouter();
     private Gcs gcs = new Gcs();
-    private String localUploadDir = "uploads";
 
     public static class Jwt {
         private String secret;
@@ -40,9 +39,12 @@ public class AfetchProperties {
     }
 
     public static class Gcs {
+        private String projectId;
         private String bucket;
         private boolean enabled;
 
+        public String getProjectId() { return projectId; }
+        public void setProjectId(String projectId) { this.projectId = projectId; }
         public String getBucket() { return bucket; }
         public void setBucket(String bucket) { this.bucket = bucket; }
         public boolean isEnabled() { return enabled; }
@@ -57,6 +59,4 @@ public class AfetchProperties {
     public void setOpenrouter(OpenRouter openrouter) { this.openrouter = openrouter; }
     public Gcs getGcs() { return gcs; }
     public void setGcs(Gcs gcs) { this.gcs = gcs; }
-    public String getLocalUploadDir() { return localUploadDir; }
-    public void setLocalUploadDir(String localUploadDir) { this.localUploadDir = localUploadDir; }
 }
