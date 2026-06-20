@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.afetch.config.AfetchProperties;
 import com.afetch.domain.entity.UploadedImage;
 import com.afetch.repository.UploadedImageRepository;
 import com.google.cloud.storage.BlobInfo;
@@ -21,7 +22,6 @@ import com.google.cloud.storage.StorageException;
 public class GcsStorageService implements StorageService {
 
     private static final Logger log = LoggerFactory.getLogger(GcsStorageService.class);
-    private static final String BUCKET = "java_project_bucket";
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "image/jpeg", "image/png", "image/webp"
     );
@@ -35,14 +35,18 @@ public class GcsStorageService implements StorageService {
 
     private final Storage storage;
     private final UploadedImageRepository imageRepository;
+    private final String bucket;
 
-    public GcsStorageService(ObjectProvider<Storage> storageProvider, UploadedImageRepository imageRepository) {
+    public GcsStorageService(ObjectProvider<Storage> storageProvider,
+                             UploadedImageRepository imageRepository,
+                             AfetchProperties properties) {
         this.storage = storageProvider.getIfAvailable();
         this.imageRepository = imageRepository;
+        this.bucket = properties.getGcs().getBucket();
         if (this.storage == null) {
             log.warn("GCS Storage bean not available. GCS uploads will be unavailable at runtime.");
         } else {
-            log.info("✓ GcsStorageService initialized and ready for uploads to bucket: {}", BUCKET);
+            log.info("GcsStorageService initialized and ready for uploads to bucket: {}", bucket);
         }
     }
 
@@ -58,15 +62,15 @@ public class GcsStorageService implements StorageService {
         String objectName = UUID.randomUUID().toString() + extension;
         
         log.debug("Uploading to GCS: bucket={}, object={}, contentType={}, size={}", 
-                  BUCKET, objectName, contentType, file.getSize());
+                  bucket, objectName, contentType, file.getSize());
         
-        BlobInfo blobInfo = BlobInfo.newBuilder(BUCKET, objectName)
+        BlobInfo blobInfo = BlobInfo.newBuilder(bucket, objectName)
                 .setContentType(contentType)
                 .build();
 
         try {
             storage.create(blobInfo, file.getBytes());
-            log.info("✓ File uploaded to GCS: gs://{}/{}", BUCKET, objectName);
+            log.info("File uploaded to GCS: gs://{}/{}", bucket, objectName);
         } catch (StorageException e) {
             log.error("✗ GCS upload failed: {}", e.getMessage(), e);
             throw new IllegalStateException("Failed to upload image to Google Cloud Storage: " + e.getMessage(), e);
@@ -75,7 +79,7 @@ public class GcsStorageService implements StorageService {
             throw new IllegalStateException("Failed to read file: " + e.getMessage(), e);
         }
 
-        String publicUrl = String.format("https://storage.googleapis.com/%s/%s", BUCKET, objectName);
+        String publicUrl = String.format("https://storage.googleapis.com/%s/%s", bucket, objectName);
         log.info("✓ Public URL generated: {}", publicUrl);
         persistImageUrl(publicUrl);
         log.info("✓ Image URL persisted to database");

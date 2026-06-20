@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.afetch.config.AfetchProperties;
 import com.google.cloud.storage.Storage;
 import org.springframework.beans.factory.ObjectProvider;
 
@@ -22,12 +23,13 @@ import java.util.Map;
 public class HealthController {
 
     private static final Logger log = LoggerFactory.getLogger(HealthController.class);
-    private static final String BUCKET = "java_project_bucket";
 
     private final Storage storage;
+    private final String bucket;
 
-    public HealthController(ObjectProvider<Storage> storageProvider) {
+    public HealthController(ObjectProvider<Storage> storageProvider, AfetchProperties properties) {
         this.storage = storageProvider.getIfAvailable();
+        this.bucket = properties.getGcs().getBucket();
     }
 
     @GetMapping("/gcs")
@@ -37,7 +39,7 @@ public class HealthController {
         try {
             boolean available = storage != null;
             health.put("available", available);
-            health.put("bucket", BUCKET);
+            health.put("bucket", bucket);
 
             if (!available) {
                 health.put("bucketAccessible", false);
@@ -46,17 +48,17 @@ public class HealthController {
                 return ResponseEntity.ok(health);
             }
 
-            var bucket = storage.get(BUCKET);
-            boolean bucketAccessible = bucket != null;
+            var bucketInfo = storage.get(bucket);
+            boolean bucketAccessible = bucketInfo != null;
             health.put("bucketAccessible", bucketAccessible);
             health.put("projectId", storage.getOptions().getProjectId());
 
             if (bucketAccessible) {
-                health.put("message", "✓ GCS ready - uploads will go to Google Cloud Storage");
-                log.info("✓ GCS health check passed");
+                health.put("message", "GCS ready - uploads will go to Google Cloud Storage");
+                log.info("GCS health check passed");
             } else {
-                health.put("message", "Bucket not found: " + BUCKET);
-                log.warn("Bucket '{}' not found", BUCKET);
+                health.put("message", "Bucket not found: " + bucket);
+                log.warn("Bucket '{}' not found", bucket);
             }
 
             return ResponseEntity.ok(health);

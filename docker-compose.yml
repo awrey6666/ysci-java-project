@@ -13,11 +13,11 @@ services:
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-google/gemma-2-9b-it:free}
       GCS_BUCKET: ${GCS_BUCKET:-java_project_bucket}
       GCS_PROJECT_ID: ${GCS_PROJECT_ID:-project-a4b9287b-070f-4f18-b48}
+      GCS_ENABLED: ${GCS_ENABLED:-true}
       # CRITICAL: Mount GCS credentials for Application Default Credentials
       GOOGLE_APPLICATION_CREDENTIALS: /app/gcs-credentials.json
     volumes:
-      # Mount GCS service account credentials from host
-      - ${GCS_CREDENTIALS_PATH:-~/.config/gcloud/application_default_credentials.json}:/app/gcs-credentials.json:ro
+      - ${GCS_CREDENTIALS_PATH:?Set GCS_CREDENTIALS_PATH to ADC file path}:/app/gcs-credentials.json:ro
     depends_on:
       - mysql
       - redis
