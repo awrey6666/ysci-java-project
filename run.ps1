@@ -29,8 +29,8 @@ function Write-Warn([string]$Message) {
 }
 
 function Resolve-AdcPath {
-    if ($env:GCS_CREDENTIALS_PATH) {
-        return [System.IO.Path]::GetFullPath($env:GCS_CREDENTIALS_PATH)
+    if (-not [string]::IsNullOrWhiteSpace($env:GCS_CREDENTIALS_PATH)) {
+        return [System.IO.Path]::GetFullPath($env:GCS_CREDENTIALS_PATH.Trim())
     }
 
     $candidates = @(
@@ -68,14 +68,17 @@ function Test-AdcFile([string]$CredsFile) {
 
 function Read-EnvValue([string]$Key, [string]$DefaultValue = "") {
     $envValue = [Environment]::GetEnvironmentVariable($Key)
-    if ($envValue) {
-        return $envValue
+    if (-not [string]::IsNullOrWhiteSpace($envValue)) {
+        return $envValue.Trim()
     }
 
     if (Test-Path -LiteralPath $EnvFile) {
         $line = Get-Content -LiteralPath $EnvFile | Where-Object { $_ -match "^$Key=" } | Select-Object -Last 1
         if ($line) {
-            return $line.Substring($Key.Length + 1)
+            $value = $line.Substring($Key.Length + 1).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($value)) {
+                return $value
+            }
         }
     }
 
@@ -83,14 +86,14 @@ function Read-EnvValue([string]$Key, [string]$DefaultValue = "") {
 }
 
 function Write-EnvFile([string]$CredsFile) {
-    $gcsEnabled = if ($env:GCS_ENABLED) { $env:GCS_ENABLED } else { "true" }
-    $gcsBucket = if ($env:GCS_BUCKET) { $env:GCS_BUCKET } else { Read-EnvValue "GCS_BUCKET" $DefaultGcsBucket }
-    $gcsProjectId = if ($env:GCS_PROJECT_ID) { $env:GCS_PROJECT_ID } else { Read-EnvValue "GCS_PROJECT_ID" $DefaultGcsProjectId }
-    $jwtSecret = if ($env:JWT_SECRET) { $env:JWT_SECRET } else { Read-EnvValue "JWT_SECRET" $DefaultJwtSecret }
-    $openRouterApiKey = if ($env:OPENROUTER_API_KEY) { $env:OPENROUTER_API_KEY } else { Read-EnvValue "OPENROUTER_API_KEY" "" }
-    $openRouterModel = if ($env:OPENROUTER_MODEL) { $env:OPENROUTER_MODEL } else { Read-EnvValue "OPENROUTER_MODEL" "google/gemma-2-9b-it:free" }
+    $gcsEnabled = Read-EnvValue "GCS_ENABLED" "true"
+    $gcsBucket = Read-EnvValue "GCS_BUCKET" $DefaultGcsBucket
+    $gcsProjectId = Read-EnvValue "GCS_PROJECT_ID" $DefaultGcsProjectId
+    $jwtSecret = Read-EnvValue "JWT_SECRET" $DefaultJwtSecret
+    $openRouterApiKey = Read-EnvValue "OPENROUTER_API_KEY" ""
+    $openRouterModel = Read-EnvValue "OPENROUTER_MODEL" "google/gemma-2-9b-it:free"
 
-    @"
+    $content = @"
 GCS_CREDENTIALS_PATH=$CredsFile
 GCS_ENABLED=$gcsEnabled
 GCS_BUCKET=$gcsBucket
@@ -98,9 +101,15 @@ GCS_PROJECT_ID=$gcsProjectId
 JWT_SECRET=$jwtSecret
 OPENROUTER_API_KEY=$openRouterApiKey
 OPENROUTER_MODEL=$openRouterModel
-"@ | Set-Content -LiteralPath $EnvFile -Encoding UTF8
+"@
+
+    [System.IO.File]::WriteAllText($EnvFile, $content, [System.Text.UTF8Encoding]::new($false))
 
     Write-Info "Updated $EnvFile"
+
+    return @{
+        GcsBucket = $gcsBucket
+    }
 }
 
 function Test-Docker {
@@ -123,14 +132,25 @@ function Test-Docker {
 }
 
 function Test-BucketAccess([string]$Bucket) {
+    if ([string]::IsNullOrWhiteSpace($Bucket)) {
+        Write-Err "GCS_BUCKET is empty. Check .env or set GCS_BUCKET=$DefaultGcsBucket"
+        exit 1
+    }
+
     if (-not (Get-Command gcloud -ErrorAction SilentlyContinue)) {
         Write-Warn "gcloud not found; skipping bucket access check."
         return
     }
 
-    gcloud storage ls "gs://$Bucket/" *> $null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warn "Cannot access bucket gs://$Bucket/. Uploads may fail until IAM is configured."
+    $prevPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        gcloud storage ls "gs://$Bucket/" 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "Cannot access bucket gs://$Bucket/. Uploads may fail until IAM is configured."
+        }
+    } finally {
+        $ErrorActionPreference = $prevPreference
     }
 }
 
@@ -192,10 +212,8 @@ function Start-Project {
 
     $credsFile = Resolve-AdcPath
     Test-AdcFile $credsFile
-    Write-EnvFile $credsFile
-
-    $gcsBucket = Read-EnvValue "GCS_BUCKET" $DefaultGcsBucket
-    Test-BucketAccess $gcsBucket
+    $envConfig = Write-EnvFile $credsFile
+    Test-BucketAccess $envConfig.GcsBucket
 
     Write-Info "Starting Docker containers..."
     Invoke-Compose up -d --build

@@ -25,8 +25,12 @@ log_warn() {
 
 resolve_adc_path() {
     if [[ -n "${GCS_CREDENTIALS_PATH:-}" ]]; then
-        echo "$GCS_CREDENTIALS_PATH"
-        return
+        local trimmed
+        trimmed="$(echo "$GCS_CREDENTIALS_PATH" | xargs)"
+        if [[ -n "$trimmed" ]]; then
+            echo "$trimmed"
+            return
+        fi
     fi
 
     echo "${HOME}/.config/gcloud/application_default_credentials.json"
@@ -58,16 +62,24 @@ read_env_value() {
     local default_value="${2:-}"
 
     if [[ -n "${!key:-}" ]]; then
-        echo "${!key}"
-        return
+        local env_value="${!key}"
+        env_value="$(echo "$env_value" | xargs)"
+        if [[ -n "$env_value" ]]; then
+            echo "$env_value"
+            return
+        fi
     fi
 
     if [[ -f "$ENV_FILE" ]]; then
-        local line
+        local line value
         line="$(grep -E "^${key}=" "$ENV_FILE" | tail -n 1 || true)"
         if [[ -n "$line" ]]; then
-            echo "${line#*=}"
-            return
+            value="${line#*=}"
+            value="$(echo "$value" | xargs)"
+            if [[ -n "$value" ]]; then
+                echo "$value"
+                return
+            fi
         fi
     fi
 
@@ -79,12 +91,12 @@ write_env_file() {
 
     local gcs_enabled gcs_bucket gcs_project_id jwt_secret openrouter_api_key openrouter_model
 
-    gcs_enabled="${GCS_ENABLED:-true}"
-    gcs_bucket="${GCS_BUCKET:-$(read_env_value GCS_BUCKET "$DEFAULT_GCS_BUCKET")}"
-    gcs_project_id="${GCS_PROJECT_ID:-$(read_env_value GCS_PROJECT_ID "$DEFAULT_GCS_PROJECT_ID")}"
-    jwt_secret="${JWT_SECRET:-$(read_env_value JWT_SECRET "$DEFAULT_JWT_SECRET")}"
-    openrouter_api_key="${OPENROUTER_API_KEY:-$(read_env_value OPENROUTER_API_KEY "")}"
-    openrouter_model="${OPENROUTER_MODEL:-$(read_env_value OPENROUTER_MODEL "google/gemma-2-9b-it:free")}"
+    gcs_enabled="$(read_env_value GCS_ENABLED "true")"
+    gcs_bucket="$(read_env_value GCS_BUCKET "$DEFAULT_GCS_BUCKET")"
+    gcs_project_id="$(read_env_value GCS_PROJECT_ID "$DEFAULT_GCS_PROJECT_ID")"
+    jwt_secret="$(read_env_value JWT_SECRET "$DEFAULT_JWT_SECRET")"
+    openrouter_api_key="$(read_env_value OPENROUTER_API_KEY "")"
+    openrouter_model="$(read_env_value OPENROUTER_MODEL "google/gemma-2-9b-it:free")"
 
     cat > "$ENV_FILE" <<EOF
 GCS_CREDENTIALS_PATH=${creds_file}
@@ -118,6 +130,11 @@ check_docker() {
 
 check_bucket_access() {
     local bucket="$1"
+
+    if [[ -z "$bucket" ]]; then
+        log_error "GCS_BUCKET is empty. Check .env or set GCS_BUCKET=${DEFAULT_GCS_BUCKET}"
+        exit 1
+    fi
 
     if ! command -v gcloud >/dev/null 2>&1; then
         log_warn "gcloud not found; skipping bucket access check."
